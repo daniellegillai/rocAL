@@ -137,22 +137,26 @@ endif()
 # MIVisionX
 if(NOT MIVisionX_FOUND)
     set(BUILD_ROCAL false)
-    message("-- ${Yellow}NOTE: rocAL library requires AMD's MIVisionX library, Not Found ${ColourReset}")
+    message("-- ${Yellow}NOTE: rocAL library requires AMD's MIVisionX library with vx_rpp extension, Not Found ${ColourReset}")
 else()
-    #find the MIVisionX backend type
-    set(MIVISIONX_BACKEND_HIP_FOUND 0)
-    if(EXISTS ${MIVisionX_INCLUDE_DIRS}/openvx_backend.h)
-        file(READ ${MIVisionX_INCLUDE_DIRS}/openvx_backend.h MIVISIONX_BACKEND_FILE)
-        string(REGEX MATCH "ENABLE_HIP ([0-9]*)" _ ${MIVISIONX_BACKEND_FILE})
-        set(MIVISIONX_BACKEND_HIP_FOUND ${CMAKE_MATCH_1})
+    #find the vx_rpp backend type
+    set(VXRPP_BACKEND_HIP_FOUND 0)
+    execute_process(
+        COMMAND sh -c "nm -D ${VXRPP_LIBRARIES} | grep -q hipMalloc"
+        RESULT_VARIABLE VXRPP_HIP_CHECK_RESULT
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+    if(VXRPP_HIP_CHECK_RESULT EQUAL 0)
+        set(VXRPP_BACKEND_HIP_FOUND 1)
+        message("-- ${White}vx_rpp found with HIP backend${ColourReset}")
     else()
-        message(FATAL_ERROR "${Red}ERROR: ${MIVisionX_INCLUDE_DIRS}/openvx_backend.h file Not Found. MIVisionX Package REQUIRED ${ColourReset}")
+        message("-- ${White}vx_rpp found with CPU backend${ColourReset}")
     endif()
-
     if ("${BACKEND}" STREQUAL "HIP" AND HIP_FOUND)
-        if (NOT MIVISIONX_BACKEND_HIP_FOUND)
+        if (NOT VXRPP_BACKEND_HIP_FOUND)
             set(BACKEND "CPU")
-            message("-- ${Red}WARNING: MIVisionX with the HIP backend Not Found (HINT: run setup script with the HIP backend)${ColourReset}")
+            message("-- ${Red}WARNING: vx_rpp with the HIP backend Not Found ${ColourReset}")
             message("-- ${Yellow}NOTE: rocAL Backend set to CPU ${ColourReset}")
         endif()
     endif()
