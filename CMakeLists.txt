@@ -115,6 +115,41 @@ else()
 endif()
 message("-- ${BoldBlue}rocAL Backend set to -- ${BACKEND}${ColourReset}")
 
+# CMake Config location
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/lib/cmake)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+# Check if backend need to be CPU
+if(GPU_SUPPORT AND "${BACKEND}" STREQUAL "HIP")
+  find_package(HIP QUIET)
+  if(NOT HIP_FOUND)
+      set(BACKEND "CPU")
+      set(GPU_SUPPORT OFF)
+      message("-- ${Yellow}NOTE: rocAL library requires HIP for BACKEND=HIP, Not Found ${ColourReset}")
+      message("-- ${Yellow}NOTE: rocAL Backend set to CPU ${ColourReset}")
+  else()
+    find_package(MIVisionX QUIET)
+    if(MIVisionX_FOUND)
+      # find the vx_rpp backend type
+      execute_process(
+          COMMAND sh -c "nm -D ${VXRPP_LIBRARIES} | grep -q hipMalloc"
+          RESULT_VARIABLE VXRPP_HIP_CHECK_RESULT
+          OUTPUT_QUIET
+          ERROR_QUIET
+      )
+      if(VXRPP_HIP_CHECK_RESULT EQUAL 0)
+        message("-- ${White}vx_rpp found with HIP backend${ColourReset}")
+      else()
+        message("-- ${White}vx_rpp found with CPU backend${ColourReset}")
+        set(BACKEND "CPU")
+        set(GPU_SUPPORT OFF)
+        message("-- ${Red}WARNING: vx_rpp with the HIP backend Not Found ${ColourReset}")
+        message("-- ${Yellow}NOTE: rocAL Backend set to CPU ${ColourReset}")
+      endif()
+    endif()
+  endif()
+endif()
+
 # rocAL Build Type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "rocAL Default Build Type" FORCE)
